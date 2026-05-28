@@ -1,7 +1,8 @@
-// app.js - 涂布轮库存管理 Web 版
+// app.js - 涂布轮库存管理 Web 版（JSONBin 同步）
 
-const STORAGE_KEY = 'coating_rollers_web'
-const SYNC_URL = '' // 留空则用 localStorage，填入 JSONBin/Gist URL 可多端同步
+const JSONBIN_ID = '6a187a497a1ff259d0c5b451'
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`
+const JSONBIN_HEADER = { 'Content-Type': 'application/json' }
 
 let rollers = []
 let currentZone = ''
@@ -13,21 +14,46 @@ let viewingId = null
 
 // ============ 数据层 ============
 function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    rollers = raw ? JSON.parse(raw) : []
-  } catch(e) {
-    rollers = []
-  }
-  // 初始化示例数据
-  if (rollers.length === 0) {
-    initData()
-  }
-  render()
+  loadFromJSONBin(function(success) {
+    if (!success || rollers.length === 0) {
+      initData()
+      saveToJSONBin()
+    }
+    render()
+  })
 }
 
-function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(rollers))
+function loadFromJSONBin(callback) {
+  fetch(JSONBIN_URL + '/latest', { headers: JSONBIN_HEADER })
+    .then(res => res.json())
+    .then(data => {
+      if (data.record && Array.isArray(data.record)) {
+        rollers = data.record
+        callback(true)
+      } else {
+        callback(false)
+      }
+    })
+    .catch(err => {
+      console.error('加载失败', err)
+      callback(false)
+    })
+}
+
+function saveToJSONBin(callback) {
+  fetch(JSONBIN_URL, {
+    method: 'PUT',
+    headers: JSONBIN_HEADER,
+    body: JSON.stringify(rollers)
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (callback) callback(!!data.metadata)
+    })
+    .catch(err => {
+      console.error('保存失败', err)
+      if (callback) callback(false)
+    })
 }
 
 function initData() {
@@ -82,7 +108,7 @@ function initData() {
   })
 
   rollers = initialData
-  saveData()
+  saveToJSONBin()
 }
 
 function getById(id) {
@@ -100,7 +126,7 @@ function addRoller(data) {
     maxCount: Number(data.maxCount) || 10000,
   }
   rollers.push(item)
-  saveData()
+  saveToJSONBin()
 }
 
 function updateRoller(id, data) {
@@ -113,19 +139,18 @@ function updateRoller(id, data) {
     usedCount: Number(data.usedCount) !== undefined ? Number(data.usedCount) : rollers[idx].usedCount,
     maxCount: Number(data.maxCount) !== undefined ? Number(data.maxCount) : rollers[idx].maxCount,
   }
-  saveData()
+  saveToJSONBin()
 }
 
 function deleteRoller(id) {
   rollers = rollers.filter(r => r._id !== id)
-  saveData()
+  saveToJSONBin()
 }
 
 // ============ 渲染层 ============
 function render() {
   let filtered = [...rollers]
 
-  // 搜索
   if (searchKey) {
     const key = searchKey.toLowerCase()
     filtered = filtered.filter(r =>
@@ -134,12 +159,10 @@ function render() {
     )
   }
 
-  // 分区筛选
   if (currentZone) {
     filtered = filtered.filter(r => r.zone === currentZone)
   }
 
-  // 排序
   filtered.sort((a, b) => {
     if (sortType === 'id') {
       return sortAsc ? a.code.localeCompare(b.code) : b.code.localeCompare(a.code)
@@ -150,7 +173,6 @@ function render() {
     }
   })
 
-  // 统计
   const stats = {
     using: rollers.filter(r => r.zone === '使用区').length,
     backup: rollers.filter(r => r.zone === '备用区').length,
@@ -163,14 +185,12 @@ function render() {
   document.getElementById('statTesting').textContent = stats.testing
   document.getElementById('statScrapped').textContent = stats.scrapped
 
-  // 筛选栏文字
   document.getElementById('filterZone').firstChild.textContent = currentZone || '全部分区'
   const sortLabel = sortType === 'id' ? '按编号' : '按寿命'
   const sortArrow = sortAsc ? '↑' : '↓'
   document.getElementById('filterSort').firstChild.textContent = sortLabel
   document.getElementById('filterSort').lastChild.textContent = sortArrow
 
-  // 列表
   const listEl = document.getElementById('rollerList')
   if (filtered.length === 0) {
     listEl.innerHTML = '<div class="empty"><span class="empty-icon">📭</span><span>暂无数据</span></div>'
@@ -268,7 +288,6 @@ function openDetail(id) {
   document.getElementById('detailCode').textContent = r.code
 
   const pct = r.maxCount ? Math.round((r.usedCount / r.maxCount) * 100) : 0
-  const updateStr = r.updateTime ? (new Date(r.updateTime).getMonth() + 1) + '-' + new Date(r.updateTime).getDate() : ''
 
   document.getElementById('detailBody').innerHTML = `
     <div class="section-title">基本信息</div>
@@ -338,7 +357,7 @@ function exportCSV() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `涂布轮数据_${new Date().toISOString().slice(0,10)}.csv`
+  a.download = '涂布轮数据_' + new Date().toISOString().slice(0,10) + '.csv'
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -377,15 +396,14 @@ document.getElementById('filterSort').addEventListener('click', function() {
 document.getElementById('btnExport').addEventListener('click', exportCSV)
 
 document.getElementById('btnSync').addEventListener('click', function() {
-  // 简单实现：下载 JSON 文件，用户可手动上传同步
-  const blob = new Blob([JSON.stringify(rollers, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `涂布轮数据_${new Date().toISOString().slice(0,10)}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-  alert('数据已导出为 JSON 文件，可分享给其他设备导入')
+  loadFromJSONBin(function(success) {
+    if (success) {
+      render()
+      alert('✅ 同步成功！已从云端获取最新数据')
+    } else {
+      alert('❌ 同步失败，请检查网络')
+    }
+  })
 })
 
 document.getElementById('btnAdd').addEventListener('click', () => openModal(null))
@@ -408,7 +426,6 @@ document.getElementById('btnSave').addEventListener('click', function() {
     alert('请填写编号')
     return
   }
-  // 检查编号重复
   const duplicate = rollers.find(r => r.code === code && r._id !== editingId)
   if (duplicate) {
     alert('编号已存在：' + code)
@@ -425,7 +442,6 @@ document.getElementById('btnSave').addEventListener('click', function() {
     maxCount: Number(document.getElementById('formMaxCount').value) || 10000,
     remark: document.getElementById('formRemark').value.trim(),
   }
-  // 自动同步 zone/status
   if (data.status === '使用中' && data.zone !== '使用区') data.zone = '使用区'
   if (data.status === '备用' && data.zone !== '备用区') data.zone = '备用区'
   if (data.status === '待测试' && data.zone !== '待测试区') data.zone = '待测试区'
@@ -441,7 +457,6 @@ document.getElementById('btnSave').addEventListener('click', function() {
   render()
 })
 
-// 详情页操作
 document.getElementById('btnChangeStatus').addEventListener('click', function() {
   if (!viewingId) return
   const r = getById(viewingId)
@@ -491,40 +506,6 @@ document.getElementById('btnDelete').addEventListener('click', function() {
     closeDetail()
     render()
   }
-})
-
-// 导入 JSON
-document.getElementById('btnImport').addEventListener('click', function() {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.json'
-  input.onchange = function(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = function(ev) {
-      try {
-        const data = JSON.parse(ev.target.result)
-        if (!Array.isArray(data)) throw new Error('格式错误')
-        // 合并数据（按 _id 去重，新的覆盖旧的）
-        data.forEach(item => {
-          const existIdx = rollers.findIndex(r => r._id === item._id)
-          if (existIdx >= 0) {
-            rollers[existIdx] = item
-          } else {
-            rollers.push(item)
-          }
-        })
-        saveData()
-        render()
-        alert('导入成功，共 ' + data.length + ' 条记录')
-      } catch(err) {
-        alert('导入失败：' + err.message)
-      }
-    }
-    reader.readAsText(file)
-  }
-  input.click()
 })
 
 // 启动
