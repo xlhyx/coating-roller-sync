@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>涂布轮库存管理</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 搜索栏 -->
+  <div class="search-bar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" placeholder="搜索编号/备注" id="searchInput">
+      <span class="search-clear" id="searchClear">✕</span>
+    </div>
+  </div>
+
+  <!-- 统计摘要 -->
+  <div class="stats-bar">
+    <div class="stat-pill">
+      <span class="num" style="color:#34C759" id="statUsing">0</span>
+      <span class="label">使用中</span>
+    </div>
+    <div class="stat-pill">
+      <span class="num" style="color:#007AFF" id="statBackup">0</span>
+      <span class="label">备用</span>
+    </div>
+    <div class="stat-pill">
+      <span class="num" style="color:#FF9500" id="statTesting">0</span>
+      <span class="label">待测试</span>
+    </div>
+    <div class="stat-pill">
+      <span class="num" style="color:#8E8E93" id="statScrapped">0</span>
+      <span class="label">报废</span>
+    </div>
+  </div>
+
+  <!-- 筛选栏 -->
+  <div class="filter-bar">
+    <div class="filter-item" id="filterZone">
+      <span>全部分区</span>
+      <span class="arrow">▾</span>
+    </div>
+    <div class="filter-item" id="filterSort">
+      <span>按编号</span>
+      <span class="arrow">↑</span>
+    </div>
+    <div class="filter-item" id="btnExport">
+      <span>导出</span>
+    </div>
+    <div class="filter-item" id="btnSync">
+      <span>同步</span>
+    </div>
+  </div>
+
+  <!-- 列表 -->
+  <div class="roller-list" id="rollerList"></div>
+
+  <!-- 添加按钮 -->
+  <div class="fab" id="btnAdd">+</div>
+
+  <!-- 表单弹窗 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">新建涂布轮</span>
+        <span class="modal-close" id="modalClose">✕</span>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>编号 *</label>
+          <input type="text" id="formCode" placeholder="如 C21、B47">
+        </div>
+        <div class="form-group">
+          <label>名称/规格</label>
+          <input type="text" id="formName" placeholder="选填">
+        </div>
+        <div class="form-group">
+          <label>入厂日期</label>
+          <input type="date" id="formEnterDate">
+        </div>
+        <div class="form-group">
+          <label>开始使用日期</label>
+          <input type="date" id="formStartUseDate">
+        </div>
+        <div class="form-group">
+          <label>分区</label>
+          <select id="formZone">
+            <option value="使用区">使用区</option>
+            <option value="备用区">备用区</option>
+            <option value="待测试区">待测试区</option>
+            <option value="报废区">报废区</option>
+            <option value="异常待确认区">异常待确认区</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>状态</label>
+          <select id="formStatus">
+            <option value="使用中">使用中</option>
+            <option value="备用">备用</option>
+            <option value="待测试">待测试</option>
+            <option value="报废">报废</option>
+            <option value="异常">异常</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>已加工片数</label>
+          <input type="number" id="formUsedCount" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>预计总片数</label>
+          <input type="number" id="formMaxCount" placeholder="10000">
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <textarea id="formRemark" placeholder="选填"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="btnCancel">取消</button>
+        <button class="btn-save" id="btnSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 详情弹窗 -->
+  <div class="modal-overlay" id="detailOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="detailCode"></span>
+        <span class="modal-close" id="detailClose">✕</span>
+      </div>
+      <div class="modal-body" id="detailBody"></div>
+      <div class="modal-footer">
+        <button class="btn-action" id="btnChangeStatus">切换状态</button>
+        <button class="btn-action" id="btnChangeZone">切换分区</button>
+        <button class="btn-action btn-primary" id="btnEdit">编辑</button>
+        <button class="btn-action btn-danger" id="btnDelete">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
