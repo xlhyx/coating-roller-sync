@@ -1,8 +1,8 @@
 // app.js - 涂布轮库存管理 Web 版（JSONBin 同步）
 
-const JSONBIN_ID = '6a187a497a1ff259d0c5b451'
+const JSONBIN_ID = '6a188196ddf5aa59f770ed0f'
 const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`
-const JSONBIN_HEADER = { 'Content-Type': 'application/json' }
+const JSONBIN_ACCESS_KEY = '$2a$10$4uT2Hadw4jwvh9dgpsFH6eieMNX5bUVjYIk3JRTG/vJn3UB1P03ra'
 
 let rollers = []
 let currentZone = ''
@@ -24,7 +24,7 @@ function loadData() {
 }
 
 function loadFromJSONBin(callback) {
-  fetch(JSONBIN_URL + '/latest', { headers: JSONBIN_HEADER })
+  fetch(JSONBIN_URL + '/latest', { headers: { 'X-Access-Key': JSONBIN_ACCESS_KEY } })
     .then(res => res.json())
     .then(data => {
       if (data.record && Array.isArray(data.record)) {
@@ -43,7 +43,7 @@ function loadFromJSONBin(callback) {
 function saveToJSONBin(callback) {
   fetch(JSONBIN_URL, {
     method: 'PUT',
-    headers: JSONBIN_HEADER,
+    headers: { 'Content-Type': 'application/json', 'X-Access-Key': JSONBIN_ACCESS_KEY },
     body: JSON.stringify(rollers)
   })
     .then(res => res.json())
